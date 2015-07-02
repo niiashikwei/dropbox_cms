@@ -1,166 +1,67 @@
-//import this file after dropbox datastore api:
-//https://www.dropbox.com/static/api/dropbox-datastores-1.1-latest.js"
+//import this file after
+// dropbox datastore api: <script src="https://www.dropbox.com/static/api/2/dropins.js" id="dropboxjs" data-app-key="a8zq40gtw0w9wjy" type="text/javascript" ></script>
+// dropins api: <script src="https://www.dropbox.com/static/api/dropbox-datastores-1.1-latest.js" type="text/javascript"></script>
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-var DEFAULT_TABLE = 'imageTable';
-var selectedDropBoxFiles = [];
-var retrievedDatastoreObjs = [];
-
-var client = new Dropbox.Client({key: "a8zq40gtw0w9wjy"});
-if (client.isAuthenticated()) {
-    console.log("authenticated!");
-} else{
-    client.reset();
-    client.authenticate({interactive: false}, function (error) {
-        if (error) {
-            console.log('Authentication error: ' + error);
-        }
-    });
-}
-
-function getImageHtmlFromObj(imageObj){
-    return getImageHtmlFromUrlAndDescription(imageObj.imageUrl, imageObj.description, imageObj.shouldDelete, imageObj.id);
-}
-
-function getImageHtmlFromUrlAndDescription(imageUrl, imageDescription, shouldDelete, id){
-    var imageContainer = document.createElement("div");
-
-    var imageDescriptionElement = document.createElement("p");
-    imageDescriptionElement.innerText = imageDescription;
-    imageContainer.appendChild(imageDescriptionElement);
-
-    var deleteCheckbox = document.createElement("input");
-    deleteCheckbox.type = "checkbox";
-    deleteCheckbox.id = id;
-    deleteCheckbox.value = shouldDelete;
-    $(deleteCheckbox).change(function(){
-        markImageForDeletion(id);
-    });
-    imageContainer.appendChild(deleteCheckbox);
-
-    var imageElement = document.createElement("img");
-    imageElement.setAttribute("src", imageUrl);
-    imageElement.setAttribute("height", "200px");
-    imageElement.setAttribute("width", "200px");
-    imageContainer.appendChild(imageElement);
-
-    return imageContainer;
-}
-
-function markImageForDeletion(id){
-    for (i = 0; i < retrievedDatastoreObjs.length; i++){
-        var record = retrievedDatastoreObjs[i];
-        console.log("searching for item to mark for deletion ...");
-        console.log("record id: " + record.getId());
-        console.log("id passed in: " + id);
-        console.log(record.getId() == id);
-        console.log(record.getId());
-        if(record.getId() == id){
-            var oldValue = record.get("shouldDelete");
-            var newValue = !oldValue;
-            console.log("shouldDelete was:" + oldValue);
-            console.log("shouldDelete will be set to: " + newValue);
-            record.set("shouldDelete", newValue);
-            console.log(record.get("shouldDelete  is now:" + record.get("shouldDelete")));
-        }
-    }
-}
-
-function loadImagesFromDataStore(containerId){
-    if(retrievedDatastoreObjs.length < 1){
-        console.log("no images retrieved from data store")
-    }else{
-        console.log("logging images from data store");
-        for (i = 0; i < retrievedDatastoreObjs.length; i++){
-            var record = retrievedDatastoreObjs[i];
-            var imageObj = record.getFields();
-            imageObj.id = record.getId();
-            console.log(imageObj);
-            var imageElement = getImageHtmlFromObj(imageObj);
-            document.getElementById(containerId).appendChild(imageElement);
-        }
-    }
-}
-
-function deleteImagesFromDataStore(){
+function deleteObjects(records, callback){
     //find records marked for delete and delete
-    for (i = 0; i < retrievedDatastoreObjs.length; i++){
-        var record = retrievedDatastoreObjs[i];
-        console.log("iterating through images to delete");
-        var imageObj = record.getFields();
-        if (imageObj.shouldDelete){
-            console.log("Deleting: " + imageObj);
-            htmlElement = document.getElementById(record.getId()).parentNode;
+    for (i = 0; i < records.length; i++){
+        var record = records[i];
+        console.log("iterating through records to delete");
+        var obj = record.getFields();
+        if (obj.shouldDelete){
+            console.log("Deleting: " + obj);
             record.deleteRecord();
-            retrievedDatastoreObjs.splice(i, 1);
-            $(htmlElement).remove();
+            records.splice(i, 1);
+            callback(record.getId());
         }
     }
 }
 
-function retrieveImagesInDataStore(){
-    retrievedDatastoreObjs = [];
+function retrieveObjects(tableName, retrievedObjs, callback){
     var datastoreManager = client.getDatastoreManager();
     datastoreManager.openDefaultDatastore(function (error, datastore) {
         if (error) {
             console.log("Error opening datastore");
             alert('Error opening default datastore: ' + error);
         }else{
-            console.log("retrieving table: " + DEFAULT_TABLE);
-            var imageTable = datastore.getTable(DEFAULT_TABLE);
+            console.log("retrieving table: " + tableName);
+            var imageTable = datastore.getTable(tableName);
 
-            console.log("retrieving records from table: " + DEFAULT_TABLE);
+            console.log("retrieving records from table: " + tableName);
             var records = imageTable.query();
 
-            console.log("logging records from table: " + DEFAULT_TABLE);
+            console.log("logging records from table: " + tableName);
             if (records.length < 1){
                 console.log("No data found in data store");
             }else{
                 for (i = 0; i < records.length; i++){
                     records[i].set("shouldDelete", false);
                     console.log(records[i].getFields());
-                    retrievedDatastoreObjs.push(records[i]);
+                    retrievedObjs.push(records[i]);
                 }
             }
         }
-
+        callback(retrievedObjs, IMAGE_CONTAINER_ID);
     });
     datastoreManager.close();
 }
 
-function preloadDropBoxImages(images, containerId){
-    selectedDropBoxFiles = [];
-    for (i = 0; i < images.length; i++){
-        var imageUrl = images[i].link;
-        console.log("File link: " + imageUrl);
-
-        var dsImage = {
-            id: "N/A",
-            imageUrl: imageUrl,
-            description: "default description",
-            shouldDelete: false
-        };
-        var imageElement = getImageHtmlFromObj(dsImage);
-        document.getElementById(containerId).appendChild(imageElement);
-
-        selectedDropBoxFiles.push(dsImage);
-    }
-}
-
-function storeSelectedDropBoxImagesInDataStore(){
-    if ( selectedDropBoxFiles < 1 ){
-        console.log("No files have been selected yet");
+function storeObjects(tableName, objects){
+    if ( objects < 1 ){
+        console.log("object array is empty");
     }else{
         var datastoreManager = client.getDatastoreManager();
         datastoreManager.openDefaultDatastore(function (error, datastore) {
             if (error) {
-                console.log("Error opening datastore, could not store image");
+                console.log("Error opening datastore, could not store data");
                 alert('Error opening default datastore: ' + error);
             }else{
-                var imageTable = datastore.getTable(DEFAULT_TABLE);
-                for (i = 0; i < selectedDropBoxFiles.length; i++){
-                    var currentImage = selectedDropBoxFiles[i];
-                    imageTable.insert(currentImage);
-                    console.log('Stored Image: ' + currentImage.imageUrl);
+                var table = datastore.getTable(tableName);
+                for (i = 0; i < objects.length; i++){
+                    var currentObject = objects[i];
+                    table.insert(currentObject);
+                    console.log('Stored Image: ' + currentObject.imageUrl);
                 }
             }
 
@@ -170,45 +71,47 @@ function storeSelectedDropBoxImagesInDataStore(){
     }
 }
 
-var chooseButton = Dropbox.createChooseButton({
-        // Required. Called when a user selects an item in the Chooser.
+function createDropboxChooseButton(divId, array) {
+    var chooseButton = Dropbox.createChooseButton({
         success: function (files) {
-            preloadDropBoxImages(files, "selectedImagesDB");
+            for (i = 0; i < files.length; i++) {
+                var imageUrl = files[i].link;
+                console.log("File link: " + imageUrl);
+                var dsImage = {
+                    id: "N/A",
+                    imageUrl: imageUrl,
+                    description: "default description",
+                    shouldDelete: false
+                };
+                var imageElement = getImageHtmlFromObj(dsImage);
+                document.getElementById("selectedImagesDB").appendChild(imageElement);
+                array.push(dsImage);
+            }
         },
-
-        // Optional. Called when the user closes the dialog without selecting a file
-        // and does not include any parameters.
         cancel: function () {
-
+            console.log("cancelled dropbox image chooser")
         },
-
-        // Optional. "preview" (default) is a preview link to the document for sharing,
-        // "direct" is an expiring link to download the contents of the file. For more
-        // information about link types, see Link types below.
         linkType: "direct", // or "preview"
-
-        // Optional. A value of false (default) limits selection to a single file, while
-        // true enables multiple file selection.
         multiselect: true, // or false
-
-        // Optional. This is a list of file extensions. If specified, the user will
-        // only be able to select files with these extensions. You may also specify
-        // file types, such as "video" or "images" in the list. For more information,
-        // see File types below. By default, all extensions are allowed.
         extensions: ['.jpg']
     });
 
-document.getElementById("selectButtonContainer").appendChild(chooseButton);
+    document.getElementById(divId).appendChild(chooseButton);
+}
 
-$("#saveToDSButton").mouseup(function(){
-    storeSelectedDropBoxImagesInDataStore();
-});
-
-retrieveImagesInDataStore();
-$("#loadFromDSButton").mouseup(function(){
-    loadImagesFromDataStore("loadedImages");
-});
-
-$("#deleteFromDSButton").mouseup(function(){
-    deleteImagesFromDataStore();
-});
+function initialize(appKey) {
+    window.client = new Dropbox.Client({key: appKey});
+    if (client.isAuthenticated()) {
+        console.log("authenticated!");
+    } else {
+        console.log('Client not authenticated!');
+        client.reset();
+        client.authenticate({interactive: false}, function (error) {
+            if (error) {
+                console.log('Authentication error: ' + error);
+            } else {
+                console.log('Client successfully authenticated');
+            }
+        });
+    }
+}
