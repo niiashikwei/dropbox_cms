@@ -3,16 +3,16 @@
 // dropins api: <script src="https://www.dropbox.com/static/api/dropbox-datastores-1.1-latest.js" type="text/javascript"></script>
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-function deleteObjects(records, callback){
-    //find records marked for delete and delete
-    for (i = 0; i < records.length; i++){
-        var record = records[i];
-        console.log("iterating through records to delete");
+function deleteObjects(dropboxRecords, callback){
+    //find dropboxRecords marked for delete and delete
+    for (i = 0; i < dropboxRecords.length; i++){
+        var record = dropboxRecords[i];
+        console.log("iterating through dropboxRecords to delete");
         var obj = record.getFields();
         if (obj.shouldDelete){
             console.log("Deleting: " + obj);
             record.deleteRecord();
-            records.splice(i, 1);
+            dropboxRecords.splice(i, 1);
             callback(record.getId());
         }
     }
@@ -42,7 +42,7 @@ function retrieveObjects(tableName, retrievedObjs, callback){
                 }
             }
         }
-        callback(retrievedObjs, IMAGE_CONTAINER_ID);
+        callback(retrievedObjs);
     });
     datastoreManager.close();
 }
@@ -99,19 +99,24 @@ function createDropboxChooseButton(divId, array) {
     document.getElementById(divId).appendChild(chooseButton);
 }
 
-function initialize(appKey) {
-    window.client = new Dropbox.Client({key: appKey});
-    if (client.isAuthenticated()) {
-        console.log("authenticated!");
-    } else {
-        console.log('Client not authenticated!');
-        client.reset();
-        client.authenticate({interactive: false}, function (error) {
-            if (error) {
-                console.log('Authentication error: ' + error);
-            } else {
-                console.log('Client successfully authenticated');
-            }
-        });
+function initialize() {
+    appKey = document.getElementById("dropboxjs").getAttribute("data-app-key");
+    if (typeof appKey === 'undefined'){
+        console.log("you're missing the app key attribute on your dropins script tag");
+    }else{
+        window.client = new Dropbox.Client({key: appKey});
+        if (client.isAuthenticated()) {
+            console.log("authenticated!");
+        } else {
+            console.log('Client not authenticated!');
+            client.reset();
+            client.authenticate({interactive: false}, function (error) {
+                if (error) {
+                    console.log('Authentication error: ' + error);
+                } else {
+                    console.log('Client successfully authenticated');
+                }
+            });
+        }
     }
 }

@@ -1,6 +1,6 @@
 
 document.addEventListener("DOMContentLoaded", function(event) {
-    initialize(DROPBOX_APP_KEY);
+    initialize();
     createDropboxChooseButton("selectButtonContainer", selectedDropBoxFilesArray);
 
     $("#saveToDSButton").mouseup(function(){

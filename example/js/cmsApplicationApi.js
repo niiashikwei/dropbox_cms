@@ -1,7 +1,5 @@
-var DEFAULT_TABLE = 'imageTable';
-var DROPBOX_APP_KEY = "a8zq40gtw0w9wjy";
-
 var IMAGE_CONTAINER_ID = "loadedImages";
+var DEFAULT_TABLE = 'imageTable';
 var selectedDropBoxFilesArray = [];
 var retrievedDatastoreObjs = [];
 
@@ -11,7 +9,7 @@ function removeHtmlElementWithId(recordId){
     $(htmlElement).remove();
 }
 
-function loadImagesFromDataStore(retrievedImageRecords, containerId){
+function loadImagesFromDataStore(retrievedImageRecords){
     if(retrievedImageRecords.length < 1){
         console.log("no images retrieved from data store")
     }else{
@@ -22,7 +20,7 @@ function loadImagesFromDataStore(retrievedImageRecords, containerId){
             imageObj.id = record.getId();
             console.log(imageObj);
             var imageElement = getImageHtmlFromObj(imageObj);
-            document.getElementById(containerId).appendChild(imageElement);
+            document.getElementById(IMAGE_CONTAINER_ID).appendChild(imageElement);
         }
     }
 }
